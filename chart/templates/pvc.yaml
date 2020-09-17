@@ -1,0 +1,24 @@
+{{- if .Values.nfs.enabled }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "name" . }}-nfs
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    branch: {{ .Values.branch | quote }}
+    commit: {{ .Values.commit | quote }}
+    owner: {{ .Values.owner | quote }}
+    message: {{ .Values.message | quote }}
+
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.nfs.size }}
+{{- end }}

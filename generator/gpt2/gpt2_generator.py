@@ -2,11 +2,10 @@ import json
 import os
 import warnings
 
-import numpy as np
-
 import tensorflow as tf
 from generator.gpt2.src import encoder, model, sample
-from story.utils import *
+
+from aidungeon.story.utils import cut_trailing_sentence, remove_profanity
 
 warnings.filterwarnings("ignore")
 
@@ -33,7 +32,6 @@ class GPT2Generator:
         hparams = model.default_hparams()
         with open(os.path.join(models_dir, self.model_name, "hparams.json")) as f:
             hparams.override_from_dict(json.load(f))
-        seed = np.random.randint(0, 100000)
 
         config = None
         if force_cpu:
@@ -108,7 +106,7 @@ class GPT2Generator:
                 feed_dict={
                     self.context: [context_tokens for _ in range(self.batch_size)]
                 },
-            )[:, len(context_tokens) :]
+            )[:, len(context_tokens):]
             for i in range(self.batch_size):
                 generated += 1
                 text = self.enc.decode(out[i])

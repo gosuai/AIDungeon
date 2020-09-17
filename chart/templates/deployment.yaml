@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "name" . }}
+  labels:
+    app: {{ template "name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    branch: {{ .Values.branch | quote }}
+    commit: {{ .Values.commit | quote }}
+    owner: {{ .Values.owner | quote }}
+    message: {{ .Values.message | quote }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ template "name" . }}
+      release: {{ .Release.Name }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0%
+      maxSurge: 100%
+  template:
+    metadata:
+      labels:
+        app: {{ template "name" . }}
+        release: {{ .Release.Name }}
+      annotations:
+        branch: {{ .Values.branch | quote }}
+        commit: {{ .Values.commit | quote }}
+        owner: {{ .Values.owner | quote }}
+        message: {{ .Values.message | quote }}
+    spec:
+      volumes:
+ {{- if .Values.nfs.enabled }}
+      - name: nfs
+        persistentVolumeClaim:
+          claimName: {{ template "name" . }}-nfs
+{{- end }}
+      containers:
+        - name: backend
+          image: {{ template "image" . }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.url}}
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 30
+            failureThreshold: 5
+            periodSeconds: 10
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          volumeMounts:
+          - name: nfs
+            mountPath: {{ .Values.nfs.mountPath }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HOST
+              value: {{ template "ingressHost" . }}
+            {{- range $name, $value := .Values.serviceEnv }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

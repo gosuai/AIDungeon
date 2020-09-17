@@ -1,17 +1,18 @@
 # coding: utf-8
+import os
 import re
-from difflib import SequenceMatcher
+from functools import lru_cache
 
-import yaml
+from difflib import SequenceMatcher
 from profanityfilter import ProfanityFilter
 
-YAML_FILE = "story/story_data.yaml"
 
+@lru_cache()
+def get_profanity_filter():
+    with open(f'{os.path.dirname(__file__)}/censored_words.txt', 'r') as f:
+        censored_words = [l.replace("\n", "") for l in f.readlines()]
 
-with open("story/censored_words.txt", "r") as f:
-    censored_words = [l.replace("\n", "") for l in f.readlines()]
-
-pf = ProfanityFilter(custom_censor_list=censored_words)
+    return ProfanityFilter(custom_censor_list=censored_words)
 
 
 def console_print(text, width=75):
@@ -55,11 +56,11 @@ def player_died(text):
     """
     lower_text = text.lower()
     you_dead_regexps = [
-        "you('re| are) (dead|killed|slain|no more|nonexistent)",
-        "you (die|pass away|perish|suffocate|drown|bleed out)",
-        "you('ve| have) (died|perished|suffocated|drowned|been (killed|slain))",
-        "you (\w* )?(yourself )?to death",
-        "you (\w* )*(collapse|bleed out|chok(e|ed|ing)|drown|dissolve) (\w* )*and (die(|d)|pass away|cease to exist|(\w* )+killed)",
+        r"you('re| are) (dead|killed|slain|no more|nonexistent)",
+        r"you (die|pass away|perish|suffocate|drown|bleed out)",
+        r"you('ve| have) (died|perished|suffocated|drowned|been (killed|slain))",
+        r"you (\w* )?(yourself )?to death",
+        r"you (\w* )*(collapse|bleed out|chok(e|ed|ing)|drown|dissolve) (\w* )*and (die(|d)|pass away|cease to exist|(\w* )+killed)",
     ]
     return any(re.search(regexp, lower_text) for regexp in you_dead_regexps)
 
@@ -67,24 +68,24 @@ def player_died(text):
 def player_won(text):
     lower_text = text.lower()
     won_phrases = [
-        "you ((\w* )*and |)live happily ever after",
-        "you ((\w* )*and |)live (forever|eternally|for eternity)",
-        "you ((\w* )*and |)(are|become|turn into) ((a|now) )?(deity|god|immortal)",
-        "you ((\w* )*and |)((go|get) (in)?to|arrive (at|in)) (heaven|paradise)",
-        "you ((\w* )*and |)celebrate your (victory|triumph)",
-        "you ((\w* )*and |)retire",
-        "The rest is history...",
+        r"you ((\w* )*and |)live happily ever after",
+        r"you ((\w* )*and |)live (forever|eternally|for eternity)",
+        r"you ((\w* )*and |)(are|become|turn into) ((a|now) )?(deity|god|immortal)",
+        r"you ((\w* )*and |)((go|get) (in)?to|arrive (at|in)) (heaven|paradise)",
+        r"you ((\w* )*and |)celebrate your (victory|triumph)",
+        r"you ((\w* )*and |)retire",
+        r"The rest is history...",
     ]
     return any(re.search(regexp, lower_text) for regexp in won_phrases)
 
 
 def remove_profanity(text):
-    return pf.censor(text)
+    return get_profanity_filter().censor(text)
 
 
 def cut_trailing_quotes(text):
     num_quotes = text.count('"')
-    if num_quotes % 2 is 0:
+    if num_quotes % 2 == 0:
         return text
     else:
         final_ind = text.rfind('"')
@@ -191,12 +192,10 @@ def mapping_variation_pairs(mapping):
     )
 
     # Change you it's before a punctuation
-    if mapping[0] is "you":
+    if mapping[0] == "you":
         mapping = ("you", "me")
-    mapping_list.append((" " + mapping[0] + ",", " " + mapping[1] + ","))
-    mapping_list.append((" " + mapping[0] + "\?", " " + mapping[1] + "\?"))
-    mapping_list.append((" " + mapping[0] + "\!", " " + mapping[1] + "\!"))
-    mapping_list.append((" " + mapping[0] + "\.", " " + mapping[1] + "."))
+    for symbol in r', \? \! \.'.split():
+        mapping_list.append((" " + mapping[0] + symbol, " " + mapping[1] + symbol))
 
     return mapping_list
 

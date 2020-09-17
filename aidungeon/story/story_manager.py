@@ -1,20 +1,17 @@
 import json
 import os
-import subprocess
 import uuid
-from subprocess import Popen
 
-from story.utils import *
+from .utils import cut_trailing_sentence, split_first_sentence
 
 
 class Story:
     def __init__(
-        self, story_start, context="", seed=None, game_state=None, upload_story=False
+        self, story_start, context="", seed=None, game_state=None,
     ):
         self.story_start = story_start
         self.context = context
         self.rating = -1
-        self.upload_story = upload_story
 
         # list of actions. First action is the prompt length should always equal that of story blocks
         self.actions = []
@@ -32,14 +29,6 @@ class Story:
             game_state = dict()
         self.game_state = game_state
         self.memory = 20
-
-    def __del__(self):
-        if self.upload_story:
-            self.save_to_storage()
-            console_print("Game saved.")
-            console_print(
-                "To load the game, type 'load' and enter the following ID: " + self.uuid
-            )
 
     def init_from_dict(self, story_dict):
         self.story_start = story_dict["story_start"]
@@ -106,7 +95,7 @@ class Story:
 
     def save_to_storage(self):
         print("Saving to storage has been disabled due to abuse of the cloud bucket. Save will now be stored locally.")
-              
+
         self.uuid = str(uuid.uuid1())
 
         save_path = "./saved_stories/"
@@ -139,7 +128,6 @@ class Story:
             cmd = "gsutil cp gs://aidungeonstories/" + file_name + " " + save_path
             os.system(cmd)
             exists = os.path.isfile(os.path.join(save_path, file_name))
-        
 
             if exists:
                 with open(os.path.join(save_path, file_name), "r") as fp:
@@ -286,7 +274,7 @@ class ConstrainedStoryManager(StoryManager):
 
         try:
             action_choice = int(action_choice_str)
-        except:
+        except Exception:
             print("Error invalid choice.")
             return None, None
 

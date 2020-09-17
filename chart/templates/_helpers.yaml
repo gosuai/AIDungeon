@@ -1,0 +1,23 @@
+{{/* vim: set filetype=mustache: */}}
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "ingressHost" -}}
+{{- if eq .Release.Namespace "prod" -}}gosu.ai{{ else }}{{ .Release.Namespace }}.gosu.ai{{ end }}
+{{- end -}}
+
+{{- define "fullname" -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- define "image" -}}
+{{- if .Values.image.digest -}}
+{{ .Values.image.digest | quote }}
+{{- else -}}
+"{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+{{- end -}}
+{{- end -}}

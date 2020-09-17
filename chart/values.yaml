@@ -1,0 +1,29 @@
+resources:
+  requests:
+    memory: 6Gi
+    cpu: 1000m
+  limits:
+    cpu: 2000m
+    memory: 13Gi
+    nvidia.com/gpu: 1
+image:
+  repository: "eu.gcr.io/dota2-186112/aidungeon"
+  tag: "latest"
+
+replicas: 1
+
+readinessProbe:
+  enabled: true
+  url: /ready
+
+nfs:
+  enabled: true
+  size: 20Gi
+  mountPath: /app/generator/gpt2/models
+
+service:
+  port: 8008
+
+serviceEnv:
+  WEB_PORT: 8008
+  WEB_HOST: 0.0.0.0
