@@ -29,7 +29,7 @@ WORKDIR /app
 
 ADD pyproject.toml poetry.lock ./
 RUN pip3 install poetry && poetry config virtualenvs.in-project true
-RUN poetry install --no-interaction
+RUN poetry install --no-interaction -E server
 
 COPY . /app
 
