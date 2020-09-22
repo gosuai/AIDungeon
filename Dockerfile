@@ -28,7 +28,7 @@ RUN curl -L https://storage.googleapis.com/gosu-common/libcudnn7_7.6.5.32-1%2Bcu
 WORKDIR /app
 
 ADD pyproject.toml poetry.lock ./
-RUN pip3 install --pre poetry==1.1.0b1 poetry-core==1.0.0a9 && poetry config virtualenvs.in-project true
+RUN pip3 install poetry && poetry config virtualenvs.in-project true
 RUN poetry install --no-interaction
 
 COPY . /app
