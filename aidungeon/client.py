@@ -119,7 +119,8 @@ class RemoteGPTGenerator:
 
     async def generate(self, prompt: str):
         response = await self.session.post(self.url, json=dict(prompt=prompt))
-        return (await response.json())['text']
+        resp = await response.json()
+        return resp['text']
 
 
 class AiDungeonClient:
@@ -194,7 +195,10 @@ class AiDungeonClient:
         return result
 
     async def generate_result(self, action: str):
-        return await self.generator.generate(self.story_context() + action)
+        head = self.story_context() + action
+        resp = await self.generator.generate(head)
+        logger.debug(f"Generate: {head} -> {resp}")
+        return resp
 
     def story_context(self):
         return self.story.latest_result()

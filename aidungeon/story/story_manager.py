@@ -78,7 +78,7 @@ class Story:
 
         return "".join(story_list)
 
-    def to_json(self):
+    def to_dict(self):
         story_dict = {}
         story_dict["story_start"] = self.story_start
         story_dict["seed"] = self.seed
@@ -90,8 +90,10 @@ class Story:
         story_dict["context"] = self.context
         story_dict["uuid"] = self.uuid
         story_dict["rating"] = self.rating
+        return story_dict
 
-        return json.dumps(story_dict)
+    def to_json(self):
+        return json.dumps(self.to_dict())
 
     def save_to_storage(self):
         print("Saving to storage has been disabled due to abuse of the cloud bucket. Save will now be stored locally.")
