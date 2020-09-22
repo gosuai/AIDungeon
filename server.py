@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from contextlib import asynccontextmanager
 from functools import partial
 
@@ -37,7 +36,7 @@ async def aidungeon_generate(generator, request):
 
 
 async def run_aidungeon_server():
-    generator = GPT2Generator(force_cpu=False)
+    generator = GPT2Generator(force_cpu=False, censor=False)
     async with create_web_app([
         post(settings.AIDUNGEON_PATH, partial(aidungeon_generate, generator)),
         get('/ready', lambda request: Response()),
