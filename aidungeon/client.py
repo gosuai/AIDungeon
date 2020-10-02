@@ -2,15 +2,14 @@ import logging
 import os
 import random
 from contextlib import asynccontextmanager
+from typing import Any, Dict
 
 import aiohttp
 import yaml
 
 from .story import grammars
 from .story.story_manager import Story
-from .story.utils import (
-    console_print, player_won, first_to_second_person, player_died, get_similarity, cut_trailing_sentence,
-)
+from .story.utils import first_to_second_person, get_similarity, cut_trailing_sentence
 
 from . import settings
 
@@ -48,17 +47,6 @@ def select_game():
     return random_story(data)
 
 
-def get_custom_prompt():
-    context = ""
-    console_print(
-        "\nEnter a prompt that describes who you are and the first couple sentences of where you start "
-        "out ex:\n 'You are a knight in the kingdom of Larion. You are hunting the evil dragon who has been "
-        + "terrorizing the kingdom. You enter the forest searching for the dragon and see' "
-    )
-    prompt = input("Starting Prompt: ")
-    return context, prompt
-
-
 def get_curated_exposition(
     setting_key, character_key, name, character, setting_description
 ):
@@ -89,7 +77,7 @@ def get_curated_exposition(
 
 
 @asynccontextmanager
-async def connect_to_aidungeon(url: str = f'http://{settings.WEB_HOST}:{settings.WEB_PORT}'):
+async def connect_to_aidungeon(url: str = f'http://{settings.WEB_HOST}:{settings.WEB_PORT}', story_dict: Dict[str, Any] = None):
     async with aiohttp.ClientSession(raise_for_status=True) as session:
         (
             setting_key,
@@ -99,16 +87,21 @@ async def connect_to_aidungeon(url: str = f'http://{settings.WEB_HOST}:{settings
             setting_description,
         ) = select_game()
 
-        logger.debug(f"Generating new story: {setting_key} {character_key} {name} {character} {setting_description}")
-        context, prompt = get_curated_exposition(setting_key, character_key, name, character, setting_description)
         generator = RemoteGPTGenerator(session, url)
-        block = await generator.generate(context + prompt)
-        block = cut_trailing_sentence(block)
-        story = Story(
-            context + prompt + block,
-            context=context,
-            game_state=None,
-        )
+        if story_dict is None:
+            context, prompt = get_curated_exposition(setting_key, character_key, name, character, setting_description)
+            logger.debug(f"Generating new story: {setting_key} {character_key} {name} {character} {setting_description}")
+            block = await generator.generate(context + prompt)
+            block = cut_trailing_sentence(block)
+            story = Story(
+                context + prompt + block,
+                context=context,
+                game_state=None,
+            )
+        else:
+            logger.debug("Continuing old story")
+            story = Story('')
+            story.init_from_dict(story_dict)
         yield AiDungeonClient(generator, story)
 
 
@@ -128,31 +121,21 @@ class AiDungeonClient:
         self.generator = generator
         self.story = story
 
-    async def ask(self, action: str):
-        if len(action) > 0 and action[0] == "/":
-            split = action[1:].split(" ")  # removes preceding slash
-            command = split[0].lower()
-            if command == "restart":
-                self.story.actions = []
-                self.story.results = []
-                return f"Game restarted.\n{self.story.story_start}"
+    def restart(self):
+        self.story.actions = []
+        self.story.results = []
+        return f"Game restarted.\n{self.story.story_start}"
 
-            elif command == "revert":
-                if len(self.story.actions) == 0:
-                    return "You can't go back any farther."
+    def revert(self):
+        if len(self.story.actions) == 0:
+            return "You can't go back any farther."
 
-                self.story.actions = self.story.actions[:-1]
-                self.story.results = self.story.results[:-1]
-                console_print("Last action reverted.")
-                if len(self.story.results) > 0:
-                    console_print(self.story.results[-1])
-                else:
-                    console_print(self.story.story_start)
-
-            else:
-                return f"Unknown command: {command}"
+        self.story.actions = self.story.actions[:-1]
+        self.story.results = self.story.results[:-1]
+        if len(self.story.results) > 0:
+            return self.story.results[-1]
         else:
-            return await self.process_action(action)
+            return self.story.story_start
 
     async def process_action(self, action: str):
         if action == "":
@@ -182,12 +165,7 @@ class AiDungeonClient:
                 self.story.results = self.story.results[:-1]
                 return "Woops that action caused the model to start looping. Try a different action to prevent that."
 
-        if player_won(result):
-            return result + "\nCONGRATS YOU WON"
-        elif player_died(result):
-            return result + "\nYOU DIED. GAME OVER"
-        else:
-            return result
+        return result
 
     async def act(self, action_choice: str):
         result = await self.generate_result(action_choice)
