@@ -79,30 +79,34 @@ def get_curated_exposition(
 @asynccontextmanager
 async def connect_to_aidungeon(url: str = f'http://{settings.WEB_HOST}:{settings.WEB_PORT}', story_dict: Dict[str, Any] = None):
     async with aiohttp.ClientSession(raise_for_status=True) as session:
-        (
-            setting_key,
-            character_key,
-            name,
-            character,
-            setting_description,
-        ) = select_game()
+        yield create_aidungeon_story(session, url, story_dict)
 
-        generator = RemoteGPTGenerator(session, url)
-        if story_dict is None:
-            context, prompt = get_curated_exposition(setting_key, character_key, name, character, setting_description)
-            logger.debug(f"Generating new story: {setting_key} {character_key} {name} {character} {setting_description}")
-            block = await generator.generate(context + prompt)
-            block = cut_trailing_sentence(block)
-            story = Story(
-                context + prompt + block,
-                context=context,
-                game_state=None,
-            )
-        else:
-            logger.debug("Continuing old story")
-            story = Story('')
-            story.init_from_dict(story_dict)
-        yield AiDungeonClient(generator, story)
+
+async def create_aidungeon_story(session, url: str, story_dict: Dict[str, Any] = None):
+    (
+        setting_key,
+        character_key,
+        name,
+        character,
+        setting_description,
+    ) = select_game()
+
+    generator = RemoteGPTGenerator(session, url)
+    if story_dict is None:
+        context, prompt = get_curated_exposition(setting_key, character_key, name, character, setting_description)
+        logger.debug(f"Generating new story: {setting_key} {character_key} {name} {character} {setting_description}")
+        block = await generator.generate(context + prompt)
+        block = cut_trailing_sentence(block)
+        story = Story(
+            context + prompt + block,
+            context=context,
+            game_state=None,
+        )
+    else:
+        logger.debug("Continuing old story")
+        story = Story('')
+        story.init_from_dict(story_dict)
+    return AiDungeonClient(generator, story)
 
 
 class RemoteGPTGenerator:
